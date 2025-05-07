@@ -372,6 +372,11 @@ function* generatePermutations(arr) {
         yield [];
     } else {
         for (let i = 0; i < arr.length; i++) {
+            // Skip swapping identical items to avoid redundant permutations
+            if (i > 0 && arr[i] === arr[i - 1]) {
+                continue;
+            }
+
             const current = Array.isArray(arr[i])
                 ? [...generatePermutations(arr[i])]
                 : [arr[i]];
