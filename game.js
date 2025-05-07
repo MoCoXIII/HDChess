@@ -343,14 +343,25 @@ function newPosition(board) {
     }
 }
 
-function* filteredPermutations(arr) {
+async function* filteredPermutations(arr) {
     // just generatePermutations but with optional filtering
+    let counter = 0;
     let perms = generatePermutations(arr);
     for (let perm of perms) {
         // Check if the permutation is valid.
+        if (displaySearch || counter % 100 === 0) { updatePieces(perm); await new Promise(resolve => setTimeout(resolve, delay)); }
+        counter = (counter + 1) % 100;
         if (positionIsSymmetric(perm)) {
-            if (positionIsSafe(perm)) {
-                yield perm; // Yield the valid permutation.
+            console.log('Symmetry check');
+            updatePieces(perm);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            if (positionIsNew(perm)) {
+                console.log('Fresh position');
+                if (positionIsSafe(perm)) {
+                    console.log('Safety check, yielding');
+                    updatePieces(perm);
+                    yield perm; // Yield the valid permutation.
+                }
             }
         }
     }
