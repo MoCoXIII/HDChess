@@ -6,6 +6,7 @@
     width: 400px;
     height: 400px;
     transform: scaleY(-1);
+    user-select: none;
 }
 
 .square {
@@ -24,6 +25,7 @@
 
 .highlight {
     background-color: yellow !important;
+    color: black !important;
 }
 
 .black {

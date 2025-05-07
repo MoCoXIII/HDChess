@@ -35,8 +35,8 @@ function addPieceMoveListener(square, row, col) {
     };
 }
 
-function updatePieces() {
-    let flatBoard = board.flat(); // Flatten the 2D array to 1D
+function updatePieces(_board = board) {
+    let flatBoard = _board.flat(); // Flatten the 2D array to 1D
 
     for (let i = 0; i < flatBoard.length; i++) {
         squares[i].textContent =
@@ -80,4 +80,8 @@ const movePiece = (squares, square, piece, move) => {
     updatePieces();
     piece.x = move[0];
     piece.y = move[1];
+    piece.velocities.forEach(velocity => {
+        velocity[0] = move[2] ? 0 - velocity[0] : velocity[0];
+        velocity[1] = move[3] ? 0 - velocity[1] : velocity[1];
+    });
 };

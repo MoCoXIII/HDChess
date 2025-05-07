@@ -2,6 +2,8 @@
 
 // default borders
 let [n, e, s, w] = ["s0", "00", "n0", "00"];
+let delay = 10;
+let displaySearch = true;
 
 const defaultBoard = [
     // The board is represented as an 8x8 array.
@@ -97,43 +99,68 @@ function* getMoves(piece) {
     // Get all possible moves for a given piece based on its velocities.
 
     for (const [dx, dy, keepStraight] of piece.velocities) {
-        let x = piece.x; // Current x-coordinate of the piece
-        let y = piece.y; // Current y-coordinate of the piece
+        yield* checkVelocity(piece, dx, dy, keepStraight);
+    }
+}
+
+function* checkVelocity(piece, dx, dy, keepStraight, targetMode = false) {
+    let x = piece.x; // Current x-coordinate of the piece
+    let y = piece.y; // Current y-coordinate of the piece
+    let currentDx = dx; // Track the current x velocity
+    let currentDy = dy; // Track the current y velocity
+    let cumulativeFlipX = false; // Track cumulative flips on the X-axis
+    let cumulativeFlipY = false; // Track cumulative flips on the Y-axis
+
+    while (true) {
         let flipX = false; // Flag to indicate if the x-coordinate is flipped
         let flipY = false; // Flag to indicate if the y-coordinate is flipped
+        const oldX = x;
+        const oldY = y;
+        x += currentDx;
+        y += currentDy;
 
-        while (true) {
-            const oldX = x;
-            const oldY = y;
-            x += dx;
-            y += dy;
+        [x, y, flipX, flipY] = wrap(board.length, board[0].length, oldX, oldY, x, y, n, e, s, w); // Wrap the coordinates based on the direction parameters.
 
-            [x, y, flipX, flipY] = wrap(board.length, board[0].length, oldX, oldY, x, y, n, e, s, w); // Wrap the coordinates based on the direction parameters.
+        if (x === oldX && y === oldY) {
+            // If the coordinates didn't change (most likely because of a blocked wall), don't move further this way and check the next velocity.
+            break;
+        }
 
-            if (x === oldX && y === oldY) {
-                // If the coordinates didn't change (most likely because of a blocked wall), don't move further this way and check the next velocity.
-                break;
-            }
+        // Update cumulative flips
+        cumulativeFlipX = flipX ? !cumulativeFlipX : cumulativeFlipX;
+        cumulativeFlipY = flipY ? !cumulativeFlipY : cumulativeFlipY;
 
-            // If still out of bounds (after wrapping or blocking), output what went wrong.
-            if (y < 0 || y >= board.length || x < 0 || x >= board[0].length) {
-                console.error(`getMoves out of bounds: ${piece.type} oldX=${oldX}, oldY=${oldY}, dx=${dx}, dy=${dy}, x=${x}, y=${y}, n=${n}, e=${e}, s=${s}, w=${w}`);
-                break; // Stop checking this velocity.
-            };
+        // Adjust the velocities based on cumulative flips
+        currentDx = cumulativeFlipX ? 0 - dx : dx;
+        currentDy = cumulativeFlipY ? 0 - dy : dy;
 
-            const targetPiece = board[y][x];
-            if (targetPiece !== '.') {
-                if (targetPiece.isWhite !== piece.isWhite) {
-                    yield [x, y, flipX, flipY]; // Capture move
+        // If still out of bounds (after wrapping or blocking), output what went wrong.
+        if (y < 0 || y >= board.length || x < 0 || x >= board[0].length) {
+            console.error(`Velocity result out of bounds: ${piece.type} oldX=${oldX}, oldY=${oldY}, dx=${dx}, dy=${dy}, x=${x}, y=${y}, n=${n}, e=${e}, s=${s}, w=${w}`);
+            break; // Stop checking this velocity.
+        };
+
+        const targetPiece = board[y][x];
+        if (targetPiece !== '.') {
+            if (targetMode) {
+                const isSameColor = piece.isWhite === targetPiece.isWhite;
+                if (piece.possible.includes(targetPiece.id) && (piece.byOwn ? isSameColor : !isSameColor)) {
+                    yield true;
                 }
-                break; // Stop checking this direction after hitting a piece.
+            } else {
+                if (targetPiece.isWhite !== piece.isWhite) {
+                    yield [x, y, cumulativeFlipX, cumulativeFlipY]; // Capture move
+                }
             }
+            break; // Stop checking this direction after hitting a piece.
+        }
 
-            yield [x, y, flipX, flipY]; // Empty square move
+        if (!targetMode) {
+            yield [x, y, cumulativeFlipX, cumulativeFlipY]; // Empty square move
+        }
 
-            if (!keepStraight) {
-                break; // Stop checking this direction after one move if not keepStraight.
-            }
+        if (!keepStraight) {
+            break;
         }
     }
 }
@@ -162,6 +189,20 @@ function positionIsSymmetric(board) {
     return true; // The board is symmetric.
 }
 
+const seenPositions = new Set();
+
+function positionIsNew(board) {
+    // Create a unique string representation of the board based on piece types and positions.
+    const boardKey = board.map(row => row.map(piece => (piece === '.' ? '.' : piece.type)).join('')).join('|');
+
+    if (seenPositions.has(boardKey)) {
+        return false; // The position has already been generated.
+    }
+
+    seenPositions.add(boardKey); // Mark this position as seen.
+    return true; // The position is new.
+}
+
 /**
  * The function checks if a given position on the chess board is valid.
  * A position is valid if no unprotected pieces are being attacked.
@@ -186,12 +227,12 @@ function positionIsSafe(board, n = null, e = null, s = null, w = null) {
                 if (!(piece.type in ['k', 'K'])) {
                     // If the piece is not a king, we may allow it to be attacked, if it is protected.
                     // Check if the piece is protected by another piece of the same color.
-                    if (isTarget(board, column, row, piece, n, e, s, w, byOwn = true)) {
+                    if (isTarget(board, column, row, piece, byOwn = true)) {
                         continue; // The piece is protected, so we can skip it.
                     }
                 }
                 // Check if the piece is being attacked by any other piece.
-                if (isTarget(board, column, row, piece, n, e, s, w, byOwn = false)) {
+                if (isTarget(board, column, row, piece, byOwn = false)) {
                     return false; // The position is invalid if any unprotected piece is being attacked. Assume the king is always unprotected, as he is of upmost importance to keep alive.
                 }
             }
@@ -213,8 +254,8 @@ function positionIsSafe(board, n = null, e = null, s = null, w = null) {
  * parameters modify the looping behavior of the board edges.
  * 
  * @param {Array} board - The chess board represented as a 2D array.
- * @param {number} x - The x-coordinate (column index) of the piece.
- * @param {number} y - The y-coordinate (row index) of the piece.
+ * @param {number} X - The x-coordinate (column index) of the piece.
+ * @param {number} Y - The y-coordinate (row index) of the piece.
  * @param {Piece} piece - The piece to check, represented as an instance of the Piece class.
  * @param {Boolean} [n="00"] - North direction looping behavior.
  * @param {Boolean} [e="00"] - East direction looping behavior.
@@ -223,55 +264,13 @@ function positionIsSafe(board, n = null, e = null, s = null, w = null) {
  * @param {Boolean} [byOwn=false] - Flag indicating whether to check for protection by own pieces.
  * @returns {Boolean} - True if the piece is being attacked or protected, false otherwise.
  */
-function isTarget(board, x, y, piece, n = "00", e = "00", s = "00", w = "00", byOwn = false) {
+function isTarget(board, X, Y, piece, byOwn = false) {
     // Loop through each possible velocity.
-    let stepX = x;
-    let stepY = y;
     for (let [dx, dy, keepStraight, possiblePieces] of getVelocities(board)) {
-        let flipX = false;
-        let flipY = false;
-        let oldStepX = stepX;
-        let oldStepY = stepY;
-        stepX = x + dx;
-        stepY = y + dy;
-
-        while (true) {
-            stepX, stepY, flipX, flipY = wrap(board.length, board[0].length, oldStepX, oldStepY, stepX, stepY, n, e, s, w); // Wrap the coordinates based on the direction parameters.
-
-            if (stepX === oldStepX && stepY === oldStepY) {
-                // If the coordinates didn't change (most likely because of a blocked wall), don't move further this way and check the next velocity.
-                break;
-            }
-
-            // If still out of bounds (after wrapping or blocking), output what went wrong.
-            if (stepY < 0 || stepY >= board.length || stepX < 0 || stepX >= board[0].length) {
-                console.error(`isTarget out of bounds: ${piece.type} x=${x}, y=${y}, dx=${dx}, dy=${dy}, stepX=${stepX}, stepY=${stepY}, n=${n}, e=${e}, s=${s}, w=${w}`);
-                break; // Stop checking this velocity.
-            };
-
-            const targetPiece = board[stepY][stepX];
-
-            if (targetPiece === '.') {
-                // If the square is empty and keepStraight is true, continue stepping.
-                if (keepStraight) {
-                    stepX += dx;
-                    stepY += dy;
-                    continue;
-                } else {
-                    // If keepStraight is false, stop checking this velocity.
-                    break;
-                }
-            }
-
-            // Check if the target piece is in possiblePieces and matches the color condition.
-            const isSameColor = piece.isWhite === targetPiece.isWhite;
-            if (possiblePieces.includes(targetPiece.id) && (byOwn ? isSameColor : !isSameColor)) {
-                return true; // The piece is being targeted or protected.
-            }
-
-            // If the target piece is not in possiblePieces, stop checking this velocity.
-            break;
-        }
+        let velocityCheck = checkVelocity({ x: X, y: Y, possible: possiblePieces, byOwn: byOwn, isWhite: piece.isWhite }, dx, dy, keepStraight, true);
+        if (velocityCheck.next()) {
+            return true;
+        };
     }
     return false; // The piece is not being targeted or protected.
 }
@@ -297,6 +296,8 @@ function isTarget(board, x, y, piece, n = "00", e = "00", s = "00", w = "00", by
 function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
     // Wrap the coordinates based on the direction parameters.
     // Assumes north is up from white's perspective.
+    let _W = W - 1;
+    let _H = H - 1;
     let flipX = false;
     let flipY = false;
     let nx = tx;
@@ -312,6 +313,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                         // flipped
                         flipX = true;
                         ny = ty % H;
+                        nx = _W - tx;
                         break;
                     default:
                         // not flipped
