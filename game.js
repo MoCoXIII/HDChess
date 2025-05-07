@@ -332,6 +332,33 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
     return [nx, ny, flipX, flipY];
 }
 
+function shuffle(arr) {
+    let flatArray = arr.flat(); // Flatten the array to shuffle all elements together
+    let shuffled = [];
+
+    // Shuffle the flattened array
+    while (flatArray.length) {
+        let index = Math.floor(Math.random() * flatArray.length);
+        shuffled.push(flatArray.splice(index, 1)[0]);
+    }
+
+    // Reconstruct the original structure with shuffled elements
+    let result = [];
+    let flatIndex = 0;
+
+    arr.forEach(subArray => {
+        if (Array.isArray(subArray)) {
+            let subArrayLength = subArray.length;
+            result.push(shuffled.slice(flatIndex, flatIndex + subArrayLength));
+            flatIndex += subArrayLength;
+        } else {
+            result.push(shuffled[flatIndex++]);
+        }
+    });
+
+    return result;
+}
+
 // Generates a new valid position
 function newPosition() {
     // Call the generator function that yields all permutations of the board.
