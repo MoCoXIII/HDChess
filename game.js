@@ -333,7 +333,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
 }
 
 // Generates a new valid position
-function newPosition(board) {
+function newPosition() {
     // Call the generator function that yields all permutations of the board.
     // This way, we keep the pieces the same.
     let permutations = filteredPermutations(board);
