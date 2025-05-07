@@ -228,6 +228,8 @@ function isTarget(board, x, y, piece, n = "00", e = "00", s = "00", w = "00", by
     let stepX = x;
     let stepY = y;
     for (let [dx, dy, keepStraight, possiblePieces] of getVelocities(board)) {
+        let flipX = false;
+        let flipY = false;
         let oldStepX = stepX;
         let oldStepY = stepY;
         stepX = x + dx;
@@ -243,7 +245,7 @@ function isTarget(board, x, y, piece, n = "00", e = "00", s = "00", w = "00", by
 
             // If still out of bounds (after wrapping or blocking), output what went wrong.
             if (stepY < 0 || stepY >= board.length || stepX < 0 || stepX >= board[0].length) {
-                console.error(`isTarget out of bounds: x=${x}, y=${y}, dx=${dx}, dy=${dy}, stepX=${stepX}, stepY=${stepY}, n=${n}, e=${e}, s=${s}, w=${w}`);
+                console.error(`isTarget out of bounds: ${piece.type} x=${x}, y=${y}, dx=${dx}, dy=${dy}, stepX=${stepX}, stepY=${stepY}, n=${n}, e=${e}, s=${s}, w=${w}`);
                 break; // Stop checking this velocity.
             };
 
@@ -315,6 +317,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                         // not flipped
                         ny = ty % H;
                 }
+                break; // Prevent fall-through to default
             default:
                 // north is blocked, don't enable this move.
                 return [x, y, false, false]; // return original coordinates
@@ -323,7 +326,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
 
     // If still out of bounds, return original coordinates.
     if (ny < 0 || ny >= H || nx < 0 || nx >= W) {
-        [nx, ny] = [x, y]; // return original coordinates
+        return [x, y, flipX, flipY]; // return original coordinates
     }
 
     return [nx, ny, flipX, flipY];
