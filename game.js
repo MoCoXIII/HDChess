@@ -3,7 +3,8 @@
 // default borders
 let [n, e, s, w] = ["s0", "00", "n0", "00"];
 let delay = 10;
-let displaySearch = true;
+let reps = 10000;
+let displaySearch = false;
 
 const defaultBoard = [
     // The board is represented as an 8x8 array.
@@ -365,11 +366,9 @@ function shuffle(arr) {
 function newPosition() {
     // Call the generator function that yields all permutations of the board.
     // This way, we keep the pieces the same.
-    let permutations = filteredPermutations(board);
+    let permutations = filteredPermutations(shuffle(board));
     // For each permutation, check if it is a valid position.
-    for (let perm of permutations) {
-        return perm;
-    }
+    return permutations.next();
 }
 
 async function* filteredPermutations(arr) {
@@ -378,21 +377,21 @@ async function* filteredPermutations(arr) {
     let perms = generatePermutations(arr);
     for (let perm of perms) {
         // Check if the permutation is valid.
-        if (displaySearch || counter % 100 === 0) { updatePieces(perm); await new Promise(resolve => setTimeout(resolve, delay)); }
-        counter = (counter + 1) % 100;
-        if (positionIsSymmetric(perm)) {
-            console.log('Symmetry check');
-            updatePieces(perm);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            if (positionIsNew(perm)) {
-                console.log('Fresh position');
+        if (displaySearch || counter % reps === 0) { updatePieces(perm); await new Promise(resolve => setTimeout(resolve, delay)); }
+        counter = (counter + 1) % reps;
+        // if (positionIsSymmetric(perm)) {
+            // console.log('Symmetry check');
+            // updatePieces(perm);
+            // await new Promise(resolve => setTimeout(resolve, delay));
+            // if (positionIsNew(perm)) {
+                // console.log('Fresh position');
                 if (positionIsSafe(perm)) {
                     console.log('Safety check, yielding');
                     updatePieces(perm);
                     yield perm; // Yield the valid permutation.
                 }
-            }
-        }
+            // }
+        // }
     }
 }
 
