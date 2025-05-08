@@ -51,7 +51,7 @@ updatePieces();
 function showMoves(piece) {
     const squares = document.querySelectorAll('.square');
     squares.forEach(square => {
-        square.classList.remove('highlight'); // Remove previous highlights
+        square.classList.remove('highlight', 'debug_highlight'); // Remove previous highlights
         if (square.textContent === "") {
             square.onclick = null; // Remove click functionality
         }

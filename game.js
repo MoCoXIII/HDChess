@@ -128,11 +128,11 @@ function* getMoves(piece) {
     // Get all possible moves for a given piece based on its velocities.
 
     for (const [dx, dy, keepStraight, isCapture = null] of piece.velocities) {
-        yield* checkVelocity(piece, dx, dy, keepStraight, isCapture);
+        yield* checkVelocity(board, piece, dx, dy, keepStraight, isCapture);
     }
 }
 
-function* checkVelocity(piece, dx, dy, keepStraight, isCapture = null, targetMode = false) {
+function* checkVelocity(board, piece, dx, dy, keepStraight, isCapture = null, targetMode = false) {
     let x = piece.x; // Current x-coordinate of the piece
     let y = piece.y; // Current y-coordinate of the piece
     let currentDx = dx; // Track the current x velocity
@@ -168,6 +168,15 @@ function* checkVelocity(piece, dx, dy, keepStraight, isCapture = null, targetMod
             console.error(`Velocity result out of bounds: ${piece.type} oldX=${oldX}, oldY=${oldY}, dx=${dx}, dy=${dy}, x=${x}, y=${y}, n=${n}, e=${e}, s=${s}, w=${w}`);
             break; // Stop checking this velocity.
         };
+
+        if (!targetMode) {
+            let positionAfterMove = board.map(row => row.slice()); // Create a deep copy of the board
+            positionAfterMove[piece.y][piece.x] = '.'; // Remove the piece from its current position
+            positionAfterMove[y][x] = new Piece(piece.type, piece.velocities, piece.id, x, y); // Place the piece at the new position
+            if (kingEndangered(positionAfterMove, piece.isWhite)) {
+                break;
+            }
+        }
 
         const targetPiece = board[y][x];
         if (targetPiece !== '.') {
@@ -258,7 +267,7 @@ function positionIsSafe(board, n = null, e = null, s = null, w = null) {
             const piece = board[row][column];
             // If the piece is not empty, check if it is being attacked.
             if (piece !== '.') {
-                if (!(piece.type in ['k', 'K'])) {
+                if (!(['k', 'K'].includes(piece.type))) {
                     // If the piece is not a king, we may allow it to be attacked, if it is protected.
                     // Check if the piece is protected by another piece of the same color.
                     if (isTarget(board, column, row, piece, byOwn = true)) {
@@ -273,6 +282,23 @@ function positionIsSafe(board, n = null, e = null, s = null, w = null) {
         }
     }
     return true; // The position is valid if no pieces are being attacked.
+}
+
+function kingEndangered(board, isWhite) {
+    for (let row = 0; row < board.length; row++) {
+        for (let column = 0; column < board[row].length; column++) {
+            const piece = board[row][column];
+            if (piece === '.') {
+                continue;
+            }
+            if (piece.type === (isWhite ? 'K' : 'k')) {
+                if (isTarget(board, column, row, piece, byOwn = false)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 /**
@@ -301,8 +327,9 @@ function positionIsSafe(board, n = null, e = null, s = null, w = null) {
 function isTarget(board, X, Y, piece, byOwn = false) {
     // Loop through each possible velocity.
     for (let [dx, dy, keepStraight, possiblePieces] of getVelocities(board)) {
-        let velocityCheck = checkVelocity({ x: X, y: Y, possible: possiblePieces, byOwn: byOwn, isWhite: piece.isWhite }, dx, dy, keepStraight, null, true);
-        if (velocityCheck.next()) {
+        let velocityCheck = checkVelocity(board, { x: X, y: Y, possible: possiblePieces, byOwn: byOwn, isWhite: piece.isWhite, type: piece.type, velocities: piece.velocities }, dx, dy, keepStraight, null, true);
+        const checkResult = velocityCheck.next();
+        if (checkResult.value) {
             return true;
         };
     }
