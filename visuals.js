@@ -58,12 +58,21 @@ function showMoves(piece) {
     });
 
     const moves = getMoves(piece);
-    for (let move of moves) {
-        const square = document.querySelector(`.row-${move[1]}.col-${move[0]}`);
+    let move = moves.next();
+    const hasMoves = move.done === false;
+
+    if (!hasMoves) {
+        console.log("No moves available for this piece.");
+        return;
+    }
+    while (move.done === false) {
+        let moveValue = move.value;
+        const square = document.querySelector(`.row-${moveValue[1]}.col-${moveValue[0]}`);
         square.classList.add('highlight');
         square.onclick = () => {
-            movePiece(squares, square, piece, move);
+            movePiece(squares, square, piece, moveValue);
         };
+        move = moves.next();
     }
 }
 
