@@ -1,7 +1,22 @@
 // This script handles game logic.
 
 // default borders
-let [n, e, s, w] = ["s0", "00", "n0", "00"];
+let [n, e, s, w] = ["s0", "w0", "n0", "e0"];
+function preset(p) {
+    switch (p) {
+        case "n":
+            [n, e, s, w] = ["00", "00", "00", "00"];
+            break;
+        case "t":
+            [n, e, s, w] = ["s0", "w0", "n0", "e0"];
+            break;
+        case "k":
+            [n, e, s, w] = ["s1", "w1", "n1", "e1"];
+            break;
+        default:
+            break;
+    }
+}
 let delay = 10;
 let reps = 10000;
 let displaySearch = false;
@@ -13,14 +28,26 @@ const defaultBoard = [
     // 'P' = white pawn, 'R' = white rook, 'N' = white knight, 'B' = white bishop, 'Q' = white queen, 'K' = white king
     // 'p' = black pawn, 'r' = black rook, 'n' = black knight, 'b' = black bishop, 'q' = black queen, 'k' = black king
     // '.' = empty square
-    ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
-    ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+
+    // standard chess
+    // ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+    // ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+    // ['.', '.', '.', '.', '.', '.', '.', '.'],
+    // ['.', '.', '.', '.', '.', '.', '.', '.'],
+    // ['.', '.', '.', '.', '.', '.', '.', '.'],
+    // ['.', '.', '.', '.', '.', '.', '.', '.'],
+    // ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+    // ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
+
+    // torus chess
     ['.', '.', '.', '.', '.', '.', '.', '.'],
+    ['N', '.', 'P', 'P', 'P', 'P', '.', 'N'],
+    ['.', '.', 'R', 'K', 'Q', 'R', '.', '.'],
+    ['.', 'P', 'B', 'P', 'P', 'B', 'P', '.'],
+    ['.', 'p', 'b', 'p', 'p', 'b', 'p', '.'],
+    ['.', '.', 'r', 'k', 'q', 'r', '.', '.'],
+    ['n', '.', 'p', 'p', 'p', 'p', '.', 'n'],
     ['.', '.', '.', '.', '.', '.', '.', '.'],
-    ['.', '.', '.', '.', '.', '.', '.', '.'],
-    ['.', '.', '.', '.', '.', '.', '.', '.'],
-    ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-    ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
 ].reverse();
 
 const defaultPieces = {
@@ -304,7 +331,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
     let nx = tx;
     let ny = ty;
 
-    if (ty >= H) {
+    if (ny >= H) {
         // If the y-coordinate exceeds the north border, wrap it around.
         switch (n[0]) { // check if north is blocked (default)
             case "s":
@@ -313,16 +340,79 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                     case "1":
                         // flipped
                         flipX = true;
-                        ny = ty % H;
-                        nx = _W - tx;
+                        ny = ny % H; // loop
+                        nx = _W - nx; // flip
                         break;
                     default:
                         // not flipped
-                        ny = ty % H;
+                        ny = ny % H; // loop
                 }
                 break; // Prevent fall-through to default
             default:
                 // north is blocked, don't enable this move.
+                return [x, y, false, false]; // return original coordinates
+        }
+    } else if (ny < 0) {
+        switch (s[0]) { // check if south is blocked (default)
+            case "n":
+                // Connection south to north
+                switch (s[1]) { // check if flipped
+                    case "1":
+                        // flipped
+                        flipX = true;
+                        ny = H + ny; // loop
+                        nx = _W - nx; // flip
+                        break;
+                    default:
+                        // not flipped
+                        ny = H + ny; // loop
+                }
+                break; // Prevent fall-through to default
+            default:
+                // south is blocked, don't enable this move.
+                return [x, y, false, false]; // return original coordinates
+        }
+    }
+
+    if (nx >= W) {
+        // If the x-coordinate exceeds the east border, wrap it around.
+        switch (e[0]) { // check if east is blocked (default)
+            case "w":
+                // Connection east to west
+                switch (e[1]) { // check if flipped
+                    case "1":
+                        // flipped
+                        flipY = true;
+                        nx = nx % W; // loop
+                        ny = _H - ny; // flip
+                        break;
+                    default:
+                        // not flipped
+                        nx = nx % W; // loop
+                }
+                break; // Prevent fall-through to default
+            default:
+                // east is blocked, don't enable this move.
+                return [x, y, false, false]; // return original coordinates
+        }
+    } else if (nx < 0) {
+        switch (w[0]) { // check if west is blocked (default)
+            case "e":
+                // Connection west to east
+                switch (w[1]) { // check if flipped
+                    case "1":
+                        // flipped
+                        flipY = true;
+                        nx = W + nx; // loop
+                        ny = _H - ny; // flip
+                        break;
+                    default:
+                        // not flipped
+                        nx = W + nx; // loop
+                }
+                break; // Prevent fall-through to default
+            default:
+                // west is blocked, don't enable this move.
                 return [x, y, false, false]; // return original coordinates
         }
     }
@@ -379,19 +469,19 @@ async function* filteredPermutations(arr) {
         // Check if the permutation is valid.
         if (displaySearch || counter % reps === 0) { updatePieces(perm); await new Promise(resolve => setTimeout(resolve, delay)); }
         counter = (counter + 1) % reps;
-        // if (positionIsSymmetric(perm)) {
-            // console.log('Symmetry check');
-            // updatePieces(perm);
-            // await new Promise(resolve => setTimeout(resolve, delay));
-            // if (positionIsNew(perm)) {
-                // console.log('Fresh position');
+        if (positionIsSymmetric(perm)) {
+            console.log('Symmetry check');
+            updatePieces(perm);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            if (positionIsNew(perm)) {
+                console.log('Fresh position');
                 if (positionIsSafe(perm)) {
                     console.log('Safety check, yielding');
                     updatePieces(perm);
                     yield perm; // Yield the valid permutation.
                 }
-            // }
-        // }
+            }
+        }
     }
 }
 
