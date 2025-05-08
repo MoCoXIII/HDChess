@@ -55,13 +55,14 @@ const defaultPieces = {
     // 'piece': [[default x (west[0]-east[7]) velocity, y (south[0]-north[7]) velocity, Bool: keepStraight], ...]
     // assume north is on top from white's perspective
     // the Boolean keepStraight is true if the piece can move in a straight line (like a rook or queen, applying the same velocity any amount of times), and false if it can only move once with any velocity (like a knight or king)
-    'P': [[0, 1, false]], // white pawn. We do not include en passant, promotion, castling, or double move, as these only apply for the default board, and we plan to use a custom one.
+    'P': [[0, 1, false, false], [1, 1, false, true], [-1, 1, false, true]], // white pawn. SPECIAL CASE: [dx, dy, keepStraight, isCapture] : isCapture means this move is only (true) / not (false) available when capturing
+    // We do not include en passant, promotion, castling, or double move, as these mostly only apply for the default board, and we use a custom one.
     'R': [[1, 0, true], [-1, 0, true], [0, 1, true], [0, -1, true]], // white rook
     'N': [[1, 2, false], [2, 1, false], [-1, 2, false], [-2, 1, false], [1, -2, false], [2, -1, false], [-1, -2, false], [-2, -1, false]], // white knight
     'B': [[1, 1, true], [-1, 1, true], [1, -1, true], [-1, -1, true]], // white bishop
     'Q': [[1, 0, true], [-1, 0, true], [0, 1, true], [0, -1, true], [1, 1, true], [-1, 1, true], [1, -1, true], [-1, -1, true]], // white queen
     'K': [[1, 0, false], [-1, 0, false], [0, 1, false], [0, -1, false], [1, 1, false], [-1, 1, false], [1, -1, false], [-1, -1, false]], // white king
-    'p': [[0, -1, false]], // black pawn
+    'p': [[0, -1, false, false], [1, -1, false, true], [-1, -1, false, true]], // black pawn
     'r': [[1, 0, true], [-1, 0, true], [0, 1, true], [0, -1, true]], // black rook
     'n': [[1, 2, false], [2, 1, false], [-1, 2, false], [-2, 1, false], [1, -2, false], [2, -1, false], [-1, -2, false], [-2, -1, false]], // black knight
     'b': [[1, 1, true], [-1, 1, true], [1, -1, true], [-1, -1, true]], // black bishop
@@ -126,12 +127,12 @@ function getVelocities(board) {
 function* getMoves(piece) {
     // Get all possible moves for a given piece based on its velocities.
 
-    for (const [dx, dy, keepStraight] of piece.velocities) {
-        yield* checkVelocity(piece, dx, dy, keepStraight);
+    for (const [dx, dy, keepStraight, isCapture = null] of piece.velocities) {
+        yield* checkVelocity(piece, dx, dy, keepStraight, isCapture);
     }
 }
 
-function* checkVelocity(piece, dx, dy, keepStraight, targetMode = false) {
+function* checkVelocity(piece, dx, dy, keepStraight, isCapture = null, targetMode = false) {
     let x = piece.x; // Current x-coordinate of the piece
     let y = piece.y; // Current y-coordinate of the piece
     let currentDx = dx; // Track the current x velocity
@@ -170,17 +171,22 @@ function* checkVelocity(piece, dx, dy, keepStraight, targetMode = false) {
 
         const targetPiece = board[y][x];
         if (targetPiece !== '.') {
-            if (targetMode) {
-                const isSameColor = piece.isWhite === targetPiece.isWhite;
-                if (piece.possible.includes(targetPiece.id) && (piece.byOwn ? isSameColor : !isSameColor)) {
-                    yield true;
-                }
-            } else {
-                if (targetPiece.isWhite !== piece.isWhite) {
-                    yield [x, y, cumulativeFlipX, cumulativeFlipY]; // Capture move
+            if (isCapture === null || (isCapture !== null && isCapture)) {
+                if (targetMode) {
+                    const isSameColor = piece.isWhite === targetPiece.isWhite;
+                    if (piece.possible.includes(targetPiece.id) && (piece.byOwn ? isSameColor : !isSameColor)) {
+                        yield true;
+                    }
+                } else {
+                    if (targetPiece.isWhite !== piece.isWhite) {
+                        yield [x, y, cumulativeFlipX, cumulativeFlipY]; // Capture move
+                    }
                 }
             }
             break; // Stop checking this direction after hitting a piece.
+        } else if (isCapture !== null && isCapture) {
+            // This move lands on an empty square but is only available for captures
+            break;
         }
 
         if (!targetMode) {
@@ -295,7 +301,7 @@ function positionIsSafe(board, n = null, e = null, s = null, w = null) {
 function isTarget(board, X, Y, piece, byOwn = false) {
     // Loop through each possible velocity.
     for (let [dx, dy, keepStraight, possiblePieces] of getVelocities(board)) {
-        let velocityCheck = checkVelocity({ x: X, y: Y, possible: possiblePieces, byOwn: byOwn, isWhite: piece.isWhite }, dx, dy, keepStraight, true);
+        let velocityCheck = checkVelocity({ x: X, y: Y, possible: possiblePieces, byOwn: byOwn, isWhite: piece.isWhite }, dx, dy, keepStraight, null, true);
         if (velocityCheck.next()) {
             return true;
         };
