@@ -479,6 +479,20 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                         nx = W + nx; // loop
                 }
                 break; // Prevent fall-through to default
+            case "n":
+                // Connection west to north
+                rotate = (rotate - 1 + 4) % 4; // ccw
+                switch (w[1]) { // check if flipped
+                    case "1":
+                        // flipped
+                        [nx, ny] = [_H - ny, W + nx]; // loop
+                        break;
+                    default:
+                        // not flipped
+                        flipY = true;
+                        [nx, ny] = [ny % H, W + nx]; // loop
+                }
+                break;
             default:
                 // west is blocked, don't enable this move.
                 return [x, y, false, false, 0]; // return original coordinates
@@ -487,6 +501,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
 
     // If still out of bounds, return original coordinates.
     if (ny < 0 || ny >= H || nx < 0 || nx >= W) {
+        console.debug(nx, ny);
         return [x, y, false, false, 0]; // return original coordinates
     }
 
