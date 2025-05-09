@@ -190,14 +190,14 @@ function* checkVelocity(board, piece, dx, dy, keepStraight, isCapture = null, ta
             break; // Stop checking this velocity.
         };
 
-        if (!targetMode) {
-            let positionAfterMove = board.map(row => row.slice()); // Create a deep copy of the board
-            positionAfterMove[piece.y][piece.x] = '.'; // Remove the piece from its current position
-            positionAfterMove[y][x] = new Piece(piece.type, piece.velocities, piece.id, x, y); // Place the piece at the new position
-            if (kingEndangered(positionAfterMove, piece.isWhite)) {
-                break;
-            }
-        }
+        // if (!targetMode) {
+        //     let positionAfterMove = board.map(row => row.slice()); // Create a deep copy of the board
+        //     positionAfterMove[piece.y][piece.x] = '.'; // Remove the piece from its current position
+        //     positionAfterMove[y][x] = new Piece(piece.type, piece.velocities, piece.id, x, y); // Place the piece at the new position
+        //     if (kingEndangered(positionAfterMove, piece.isWhite)) {
+        //         break;
+        //     }
+        // }
 
         const targetPiece = board[y][x];
         if (targetPiece !== '.') {
