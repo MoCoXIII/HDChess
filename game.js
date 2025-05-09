@@ -1,7 +1,7 @@
 // This script handles game logic.
 
 // default borders
-let [n, e, s, w] = ["s0", "w0", "n0", "e0"];
+let [n, e, s, w] = ["w0", "s0", "e0", "n0"];
 function preset(p) {
     switch (p) {
         case "n":
@@ -94,7 +94,7 @@ let board = defaultBoard.map((row, rowIndex) =>
             ? '.'
             : new Piece(
                 piece,
-                defaultPieces[piece] || [],
+                JSON.parse(JSON.stringify(defaultPieces[piece] || [])), // Provide a copy of the velocities
                 pieceCounter++,
                 colIndex, rowIndex
             )
@@ -139,16 +139,18 @@ function* checkVelocity(board, piece, dx, dy, keepStraight, isCapture = null, ta
     let currentDy = dy; // Track the current y velocity
     let cumulativeFlipX = false; // Track cumulative flips on the X-axis
     let cumulativeFlipY = false; // Track cumulative flips on the Y-axis
+    let cumulativeRotation = 0; // Track cumulative rotation (in 90-degree increments)
 
     while (true) {
         let flipX = false; // Flag to indicate if the x-coordinate is flipped
         let flipY = false; // Flag to indicate if the y-coordinate is flipped
+        let rotate = "no"; // Flag to indicate the type of rotation
         const oldX = x;
         const oldY = y;
         x += currentDx;
         y += currentDy;
 
-        [x, y, flipX, flipY] = wrap(board.length, board[0].length, oldX, oldY, x, y, n, e, s, w); // Wrap the coordinates based on the direction parameters.
+        [x, y, flipX, flipY, rotate] = wrap(board.length, board[0].length, oldX, oldY, x, y, n, e, s, w); // Wrap the coordinates based on the direction parameters.
 
         if (x === oldX && y === oldY) {
             // If the coordinates didn't change (most likely because of a blocked wall), don't move further this way and check the next velocity.
@@ -160,8 +162,27 @@ function* checkVelocity(board, piece, dx, dy, keepStraight, isCapture = null, ta
         cumulativeFlipY = flipY ? !cumulativeFlipY : cumulativeFlipY;
 
         // Adjust the velocities based on cumulative flips
-        currentDx = cumulativeFlipX ? 0 - dx : dx;
-        currentDy = cumulativeFlipY ? 0 - dy : dy;
+        let _currentDx = cumulativeFlipX ? 0 - dx : dx;
+        let _currentDy = cumulativeFlipY ? 0 - dy : dy;
+
+        // Adjust the velocities based on cumulative rotation
+        cumulativeRotation = (cumulativeRotation + rotate) % 4
+
+        // Apply cumulative rotation to the velocities
+        switch (cumulativeRotation) {
+            case 1: // 90 degrees clockwise
+                [currentDx, currentDy] = [_currentDy, -_currentDx];
+                break;
+            case 2: // 180 degrees
+                [currentDx, currentDy] = [-_currentDx, -_currentDy];
+                break;
+            case 3: // 90 degrees counterclockwise
+                [currentDx, currentDy] = [-_currentDy, _currentDx];
+                break;
+            default: // 0 degrees (no rotation)
+                [currentDx, currentDy] = [_currentDx, _currentDy];
+                break;
+        }
 
         // If still out of bounds (after wrapping or blocking), output what went wrong.
         if (y < 0 || y >= board.length || x < 0 || x >= board[0].length) {
@@ -188,7 +209,7 @@ function* checkVelocity(board, piece, dx, dy, keepStraight, isCapture = null, ta
                     }
                 } else {
                     if (targetPiece.isWhite !== piece.isWhite) {
-                        yield [x, y, cumulativeFlipX, cumulativeFlipY]; // Capture move
+                        yield [x, y, cumulativeFlipX, cumulativeFlipY, cumulativeRotation]; // Capture move
                     }
                 }
             }
@@ -199,7 +220,7 @@ function* checkVelocity(board, piece, dx, dy, keepStraight, isCapture = null, ta
         }
 
         if (!targetMode) {
-            yield [x, y, cumulativeFlipX, cumulativeFlipY]; // Empty square move
+            yield [x, y, cumulativeFlipX, cumulativeFlipY, cumulativeRotation]; // Empty square move
         }
 
         if (!keepStraight) {
@@ -361,6 +382,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
     let _H = H - 1;
     let flipX = false;
     let flipY = false;
+    let rotate = 0;
     let nx = tx;
     let ny = ty;
 
@@ -373,17 +395,30 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                     case "1":
                         // flipped
                         flipX = true;
-                        ny = ny % H; // loop
-                        nx = _W - nx; // flip
+                        [ny, nx] = [ny % H, _W - nx];
                         break;
                     default:
                         // not flipped
                         ny = ny % H; // loop
                 }
                 break; // Prevent fall-through to default
+            case "w":
+                // Connection north to west
+                rotate = (rotate + 1) % 4; // cw
+                switch (n[1]) { // check if flipped
+                    case "1":
+                        // flipped
+                        [nx, ny] = [ny % H, nx]; // loop
+                        break;
+                    default:
+                        // not flipped
+                        flipX = true;
+                        [nx, ny] = [ny % H, _W - nx]; // loop
+                }
+                break;
             default:
                 // north is blocked, don't enable this move.
-                return [x, y, false, false]; // return original coordinates
+                return [x, y, false, false, 0]; // return original coordinates
         }
     } else if (ny < 0) {
         switch (s[0]) { // check if south is blocked (default)
@@ -403,7 +438,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                 break; // Prevent fall-through to default
             default:
                 // south is blocked, don't enable this move.
-                return [x, y, false, false]; // return original coordinates
+                return [x, y, false, false, 0]; // return original coordinates
         }
     }
 
@@ -426,7 +461,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                 break; // Prevent fall-through to default
             default:
                 // east is blocked, don't enable this move.
-                return [x, y, false, false]; // return original coordinates
+                return [x, y, "no"]; // return original coordinates
         }
     } else if (nx < 0) {
         switch (w[0]) { // check if west is blocked (default)
@@ -446,16 +481,16 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                 break; // Prevent fall-through to default
             default:
                 // west is blocked, don't enable this move.
-                return [x, y, false, false]; // return original coordinates
+                return [x, y, false, false, 0]; // return original coordinates
         }
     }
 
     // If still out of bounds, return original coordinates.
     if (ny < 0 || ny >= H || nx < 0 || nx >= W) {
-        return [x, y, flipX, flipY]; // return original coordinates
+        return [x, y, false, false, 0]; // return original coordinates
     }
 
-    return [nx, ny, flipX, flipY];
+    return [nx, ny, flipX, flipY, rotate];
 }
 
 function shuffle(arr) {

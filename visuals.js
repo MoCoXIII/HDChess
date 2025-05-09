@@ -92,5 +92,12 @@ const movePiece = (squares, square, piece, move) => {
     piece.velocities.forEach(velocity => {
         velocity[0] = move[2] ? 0 - velocity[0] : velocity[0];
         velocity[1] = move[3] ? 0 - velocity[1] : velocity[1];
+
+        // Apply rotation based on move[4]
+        for (let i = 0; i < move[4]; i++) {
+            const temp = velocity[0];
+            velocity[0] = velocity[1];
+            velocity[1] = -temp;
+        }
     });
 };
