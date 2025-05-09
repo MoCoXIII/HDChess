@@ -1,0 +1,2 @@
+Known bugs
+- isTarget (and thus kingEndangered) uses reverse path lookup to save on work, but this breaks when wall connections are not two-sided (the same on both sides)
