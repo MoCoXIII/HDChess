@@ -48,7 +48,7 @@ function updatePieces(_board = board) {
 
 updatePieces();
 
-function showMoves(piece) {
+async function showMoves(piece) {
     const squares = document.querySelectorAll('.square');
     squares.forEach(square => {
         square.classList.remove('highlight', 'debug_highlight'); // Remove previous highlights
@@ -72,6 +72,7 @@ function showMoves(piece) {
         square.onclick = () => {
             movePiece(squares, square, piece, moveValue);
         };
+        await new Promise(resolve => setTimeout(resolve, 10));
         move = moves.next();
     }
 }
