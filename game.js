@@ -166,7 +166,8 @@ function* checkVelocity(board, piece, dx, dy, keepStraight, isCapture = null, ta
         let _currentDy = cumulativeFlipY ? 0 - dy : dy;
 
         // Adjust the velocities based on cumulative rotation
-        cumulativeRotation = (cumulativeRotation + rotate) % 4
+        console.debug(cumulativeRotation, rotate, (cumulativeRotation + rotate) % 4);
+        cumulativeRotation = (cumulativeRotation + rotate) % 4;
 
         // Apply cumulative rotation to the velocities
         switch (cumulativeRotation) {
@@ -386,7 +387,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
     let nx = tx;
     let ny = ty;
 
-    if (ny >= H) {
+    if (ny >= H) { // from north
         // If the y-coordinate exceeds the north border, wrap it around.
         switch (n[0]) { // check if north is blocked (default)
             case "s":
@@ -394,7 +395,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                 switch (n[1]) { // check if flipped
                     case "1":
                         // flipped
-                        flipX = true;
+                        flipX = !flipX;
                         [ny, nx] = [ny % H, _W - nx];
                         break;
                     default:
@@ -412,7 +413,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                         break;
                     default:
                         // not flipped
-                        flipX = true;
+                        flipX = !flipX;
                         [nx, ny] = [ny % H, _W - nx]; // loop
                 }
                 break;
@@ -420,14 +421,14 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                 // north is blocked, don't enable this move.
                 return [x, y, false, false, 0]; // return original coordinates
         }
-    } else if (ny < 0) {
+    } else if (ny < 0) { // from south
         switch (s[0]) { // check if south is blocked (default)
             case "n":
                 // Connection south to north
                 switch (s[1]) { // check if flipped
                     case "1":
                         // flipped
-                        flipX = true;
+                        flipX = !flipX;
                         ny = H + ny; // loop
                         nx = _W - nx; // flip
                         break;
@@ -436,13 +437,27 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                         ny = H + ny; // loop
                 }
                 break; // Prevent fall-through to default
+            case "e":
+                // Connection south to east
+                rotate = (rotate + 1) % 4; // ccw
+                switch (s[1]) { // check if flipped
+                    case "1":
+                        // flipped
+                        [nx, ny] = [H + ny, nx]; // loop
+                        break;
+                    default:
+                        // not flipped
+                        flipX = !flipX;
+                        [nx, ny] = [H + ny, _W - nx]; // loop
+                }
+                break;
             default:
                 // south is blocked, don't enable this move.
                 return [x, y, false, false, 0]; // return original coordinates
         }
     }
 
-    if (nx >= W) {
+    if (nx >= W) { // from east
         // If the x-coordinate exceeds the east border, wrap it around.
         switch (e[0]) { // check if east is blocked (default)
             case "w":
@@ -450,7 +465,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                 switch (e[1]) { // check if flipped
                     case "1":
                         // flipped
-                        flipY = true;
+                        flipY = !flipY;
                         nx = nx % W; // loop
                         ny = _H - ny; // flip
                         break;
@@ -459,18 +474,32 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                         nx = nx % W; // loop
                 }
                 break; // Prevent fall-through to default
+            case "s":
+                // Connection east to south
+                rotate = (rotate - 1 + 4) % 4; // ccw
+                switch (e[1]) { // check if flipped
+                    case "1":
+                        // flipped
+                        flipY = !flipY;
+                        [nx, ny] = [ny, nx % W]; // loop
+                        break;
+                    default:
+                        // not flipped
+                        [nx, ny] = [_H - ny, nx % W]; // loop
+                }
+                break;
             default:
                 // east is blocked, don't enable this move.
-                return [x, y, "no"]; // return original coordinates
+                return [x, y, false, false, 0]; // return original coordinates
         }
-    } else if (nx < 0) {
+    } else if (nx < 0) { // from west
         switch (w[0]) { // check if west is blocked (default)
             case "e":
                 // Connection west to east
                 switch (w[1]) { // check if flipped
                     case "1":
                         // flipped
-                        flipY = true;
+                        flipY = !flipY;
                         nx = W + nx; // loop
                         ny = _H - ny; // flip
                         break;
@@ -489,7 +518,7 @@ function wrap(W, H, x, y, tx, ty, n = "00", e = "00", s = "00", w = "00") {
                         break;
                     default:
                         // not flipped
-                        flipY = true;
+                        flipY = !flipY;
                         [nx, ny] = [ny % H, W + nx]; // loop
                 }
                 break;

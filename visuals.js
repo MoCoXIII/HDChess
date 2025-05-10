@@ -7,6 +7,7 @@ let squares = [];
 function createChessBoard() {
     const boardContainer = document.createElement('div');
     boardContainer.id = 'chess-board';
+    boardContainer.classList.add('chess-board');
 
     for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
