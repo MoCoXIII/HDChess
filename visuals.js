@@ -101,3 +101,30 @@ const movePiece = (squares, square, piece, move) => {
         }
     });
 };
+
+function drawSurrounding() {
+    const boardContainer = document.getElementById('chess-board');
+    const directions = [
+        { dx: 0, dy: -1, rotation: n[0] === "s" ? 0 : n[0] === "w" ? 90 : 45, mirror: n[1] === "0" ? 1 : 0 },  // Top
+        { dx: 1, dy: 0, rotation: e[0] === "w" ? 0 : e[0] === "s" ? -90 : 45, mirror: e[1] === "0" ? 1 : 0 },  // Right
+        { dx: 0, dy: 1, rotation: s[0] === "n" ? 0 : s[0] === "e" ? -90 : 45, mirror: s[1] === "0" ? 1 : 0 },   // Bottom
+        { dx: -1, dy: 0, rotation: w[0] === "e" ? 0 : w[0] === "n" ? -90 : 45, mirror: w[1] === "0" ? 1 : 0 }  // Left
+    ];
+
+    boardContainer.style.transform = `
+            translate(400px, 400px)
+            scaleY(-1)
+        `;
+    directions.forEach(({ dx, dy, rotation, mirror }) => {
+        const clone = boardContainer.cloneNode(true);
+        clone.id = ''; // Remove duplicate ID
+        clone.style.position = "absolute";
+        clone.style.transform = `
+                translate(${400 + dx * 400}px, ${dy * 400}px)
+                rotate(${rotation}deg)
+                scale(${mirror === 1 ? -1 : 1}, 1)
+            `;
+        clone.classList.add('chess-board');
+        document.body.appendChild(clone);
+    });
+}
