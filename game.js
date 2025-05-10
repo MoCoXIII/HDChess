@@ -1,7 +1,7 @@
 // This script handles game logic.
 
 // default borders
-let [n, e, s, w] = ["w0", "s0", "e0", "n0"];
+let [n, e, s, w] = ["s0", "w0", "n0", "e0"];
 function preset(p) {
     switch (p) {
         case "n":
